@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Orion.Api/Orion.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Orion.Tests/Orion.Tests.csproj" />
+  </Folder>
+</Solution>
