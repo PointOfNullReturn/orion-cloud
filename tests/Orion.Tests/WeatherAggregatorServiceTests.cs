@@ -1,6 +1,6 @@
 ﻿namespace Orion.Tests;
 
-public class UnitTest1
+public class WeatherAggregatorServiceTests
 {
     [Fact]
     public void Test1()
