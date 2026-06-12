@@ -94,6 +94,7 @@ public class OpenMeteoProvider : IWeatherProvider
 
             Visibility: null,
             Summary: null,
+            Condition: null,
             Sunrise: null,
             Sunset: null,
             City: null,

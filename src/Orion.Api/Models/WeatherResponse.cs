@@ -32,6 +32,7 @@ public record WeatherResponse(
 
     int? Visibility,
     string? Summary,
+    string? Condition,
     DateTimeOffset? Sunrise,
     DateTimeOffset? Sunset,
     string? City,
