@@ -4,6 +4,8 @@ public class WeatherOptions
 {
     public const string SectionName = "Weather";
 
+    public int CacheTtlSeconds { get; set; } = 300;
+
     public OpenMeteoOptions OpenMeteo { get; set; } = new();
     public OpenWeatherOptions OpenWeather { get; set; } = new();
 }
