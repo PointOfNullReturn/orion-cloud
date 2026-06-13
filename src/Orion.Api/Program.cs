@@ -100,3 +100,5 @@ app.MapGet("/weather", async (
 });
 
 app.Run();
+
+public partial class Program;
