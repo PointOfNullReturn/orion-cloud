@@ -17,7 +17,7 @@ public static class UnitConverter
         };
 
     private static double CelsiusToFahrenheit(double c) => c * 9.0 / 5.0 + 32.0;
-    private static double HectopascalsToInchesOfMercury(double hpa) => hpa / 33.8639;
+    private static double HectopascalsToInchesOfMercury(double hpa) => hpa / 33.86389;
     private static double MetersPerSecondToMilesPerHour(double ms) => ms * 2.236936;
     private static double MillimetersToInches(double mm) => mm / 25.4;
     private static int MetersToFeet(int m) => (int)Math.Round(m * 3.28084);
