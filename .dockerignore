@@ -1,0 +1,32 @@
+# Build artifacts — we rebuild inside the container
+**/bin
+**/obj
+
+# Version control
+**/.git
+**/.gitignore
+**/.gitattributes
+
+# IDE / editor caches
+**/.vs
+**/.vscode
+**/.idea
+**/*.user
+
+# OS junk
+**/.DS_Store
+**/Thumbs.db
+
+# Docker files themselves — no value inside the image
+Dockerfile
+.dockerignore
+
+# Tests aren't copied into the image; excluding them speeds up the build context upload
+tests/
+
+# Local docs and notes
+README.md
+TASKS.md
+ORION_PROJECT_BRIEF.md
+PRODUCTION_NOTES.md
+LICENSE
