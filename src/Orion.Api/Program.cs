@@ -1,4 +1,7 @@
 using System.Text.Json.Serialization;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 using Orion.Api.Configuration;
@@ -13,6 +16,33 @@ builder.Services.AddProblemDetails();
 
 builder.Services.Configure<WeatherOptions>(
     builder.Configuration.GetSection(WeatherOptions.SectionName));
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Container Apps ingress is the only path to the container, so trust X-Forwarded-* from any upstream.
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("weather-per-ip", httpContext =>
+    {
+        var rl = httpContext.RequestServices
+            .GetRequiredService<IOptions<WeatherOptions>>().Value.RateLimit;
+        var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetSlidingWindowLimiter(partitionKey, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = rl.PermitLimit,
+            Window = TimeSpan.FromSeconds(rl.WindowSeconds),
+            SegmentsPerWindow = 6,
+            QueueLimit = 0,
+            QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+        });
+    });
+});
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -51,8 +81,10 @@ builder.Services.AddScoped<IWeatherAggregatorService, WeatherAggregatorService>(
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
 {
@@ -101,7 +133,7 @@ app.MapGet("/weather", async (
     }
 
     return Results.Ok(unitsValue == Units.Imperial ? UnitConverter.ToImperial(response) : response);
-});
+}).RequireRateLimiting("weather-per-ip");
 
 app.Run();
 

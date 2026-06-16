@@ -69,6 +69,43 @@ public class WeatherEndpointTests : IClassFixture<OrionWebAppFactory>
     }
 
     [Fact]
+    public async Task GetWeather_ExceedingRateLimit_Returns429()
+    {
+        var meteo = StubProvider(Provider.OpenMeteo,
+            WeatherResponses.Metric(temperature: 10, providers: new[] { Provider.OpenMeteo }));
+        var client = _factory.WithProviders(meteo).CreateClient();
+
+        var first = await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+        var second = await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+        var third = await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetHealth_NotAffectedByWeatherRateLimit()
+    {
+        var meteo = StubProvider(Provider.OpenMeteo,
+            WeatherResponses.Metric(temperature: 10, providers: new[] { Provider.OpenMeteo }));
+        var client = _factory.WithProviders(meteo).CreateClient();
+
+        // Exhaust /weather's per-IP limit.
+        await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+        await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+        var limited = await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+
+        // /health must remain reachable so Container Apps probes don't fail.
+        for (int i = 0; i < 3; i++)
+        {
+            var response = await client.GetAsync("/health");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+    }
+
+    [Fact]
     public async Task GetWeather_ProviderThrows_Returns500ProblemDetailsWithoutLeakingException()
     {
         var meteo = StubProvider(Provider.OpenMeteo,

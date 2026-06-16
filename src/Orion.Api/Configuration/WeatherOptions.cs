@@ -8,6 +8,13 @@ public class WeatherOptions
 
     public OpenMeteoOptions OpenMeteo { get; set; } = new();
     public OpenWeatherOptions OpenWeather { get; set; } = new();
+    public RateLimitOptions RateLimit { get; set; } = new();
+}
+
+public class RateLimitOptions
+{
+    public int PermitLimit { get; set; } = 60;
+    public int WindowSeconds { get; set; } = 60;
 }
 
 public class OpenMeteoOptions

@@ -22,6 +22,8 @@ public sealed class OrionWebAppFactory : WebApplicationFactory<Program>
                 ["Weather:OpenMeteo:BaseUrl"] = "http://localhost/openmeteo/",
                 ["Weather:OpenWeather:BaseUrl"] = "http://localhost/openweather/",
                 ["Weather:OpenWeather:ApiKey"] = "test-key",
+                ["Weather:RateLimit:PermitLimit"] = "2",
+                ["Weather:RateLimit:WindowSeconds"] = "60",
             });
         });
     }
