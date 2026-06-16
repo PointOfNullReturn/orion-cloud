@@ -101,6 +101,22 @@ app.MapGet("/weather", async (
     IWeatherAggregatorService aggregator,
     CancellationToken cancellationToken) =>
 {
+    if (!double.IsFinite(lat) || lat < -90 || lat > 90)
+    {
+        return Results.Problem(
+            title: "Invalid query parameter",
+            detail: $"Invalid lat value: '{lat}'. Expected a number between -90 and 90.",
+            statusCode: 400);
+    }
+
+    if (!double.IsFinite(lon) || lon < -180 || lon > 180)
+    {
+        return Results.Problem(
+            title: "Invalid query parameter",
+            detail: $"Invalid lon value: '{lon}'. Expected a number between -180 and 180.",
+            statusCode: 400);
+    }
+
     var unitsValue = Units.Metric;
     if (!string.IsNullOrEmpty(units) &&
         !Enum.TryParse(units, ignoreCase: true, out unitsValue))

@@ -105,6 +105,35 @@ public class WeatherEndpointTests : IClassFixture<OrionWebAppFactory>
         }
     }
 
+    [Theory]
+    [InlineData(91.0, 0.0)]
+    [InlineData(-91.0, 0.0)]
+    [InlineData(0.0, 181.0)]
+    [InlineData(0.0, -181.0)]
+    public async Task GetWeather_OutOfRangeCoords_Returns400(double lat, double lon)
+    {
+        var client = _factory.WithProviders().CreateClient();
+
+        var response = await client.GetAsync(FormattableString.Invariant($"/weather?lat={lat}&lon={lon}"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("NaN", "0")]
+    [InlineData("Infinity", "0")]
+    [InlineData("-Infinity", "0")]
+    [InlineData("0", "NaN")]
+    [InlineData("0", "Infinity")]
+    public async Task GetWeather_NonFiniteCoords_Returns400(string lat, string lon)
+    {
+        var client = _factory.WithProviders().CreateClient();
+
+        var response = await client.GetAsync($"/weather?lat={lat}&lon={lon}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task GetWeather_ProviderThrows_Returns500ProblemDetailsWithoutLeakingException()
     {
