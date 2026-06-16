@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Orion.Api.Models;
 using Orion.Api.Services;
 using Orion.Tests.Helpers;
@@ -65,6 +66,32 @@ public class WeatherEndpointTests : IClassFixture<OrionWebAppFactory>
         var response = await client.GetAsync("/health");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetWeather_ProviderThrows_Returns500ProblemDetailsWithoutLeakingException()
+    {
+        var meteo = StubProvider(Provider.OpenMeteo,
+            WeatherResponses.Metric(temperature: 10, providers: new[] { Provider.OpenMeteo }));
+        var throwing = Substitute.For<IWeatherProvider>();
+        throwing.Name.Returns(Provider.OpenWeather);
+        throwing
+            .GetCurrentWeatherAsync(Arg.Any<double>(), Arg.Any<double>(), Arg.Any<CancellationToken>())
+            .ThrowsAsyncForAnyArgs(new InvalidOperationException("kaboom-secret-detail"));
+        var client = _factory.WithProviders(meteo, throwing).CreateClient();
+
+        var response = await client.GetAsync("/weather?lat=47.6&lon=-122.3");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+
+        using var doc = JsonDocument.Parse(body);
+        Assert.Equal(500, doc.RootElement.GetProperty("status").GetInt32());
+
+        Assert.DoesNotContain("InvalidOperationException", body);
+        Assert.DoesNotContain("kaboom-secret-detail", body);
+        Assert.DoesNotContain("stackTrace", body, StringComparison.OrdinalIgnoreCase);
     }
 
     private static IWeatherProvider StubProvider(Provider name, WeatherResponse? response)

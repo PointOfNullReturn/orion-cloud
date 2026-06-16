@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
+builder.Services.AddProblemDetails();
 
 builder.Services.Configure<WeatherOptions>(
     builder.Configuration.GetSection(WeatherOptions.SectionName));
@@ -49,6 +50,9 @@ builder.Services.AddTransient<IWeatherProvider>(sp => sp.GetRequiredService<Open
 builder.Services.AddScoped<IWeatherAggregatorService, WeatherAggregatorService>();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
 if (app.Environment.IsDevelopment())
 {
