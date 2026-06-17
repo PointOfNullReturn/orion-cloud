@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { fetchWeather, type Units, type WeatherResponse } from "./api/weather";
 import { fetchGeocode, type GeocodeResult } from "./api/geocode";
 import { fetchReverse } from "./api/reverse";
@@ -28,6 +28,10 @@ function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<GeocodeResult[] | null>(null);
+
+  // Monotonic id for location requests. A slow reverse-geocode from "Use my
+  // location" must not overwrite the label once a newer location supersedes it.
+  const requestId = useRef(0);
 
   const busy = phase === "busy";
 
@@ -60,6 +64,7 @@ function App() {
   }
 
   async function useMyLocation() {
+    const id = ++requestId.current;
     setPhase("busy");
     setMessage(null);
     setIsError(false);
@@ -71,7 +76,8 @@ function App() {
       const reverse = fetchReverse(pos.latitude, pos.longitude);
       await loadWeather(pos.latitude, pos.longitude, null);
       const place = await reverse;
-      if (place) setLocationLabel(placeLabel(place));
+      // Ignore a stale reverse: a newer location request has superseded this one.
+      if (place && requestId.current === id) setLocationLabel(placeLabel(place));
     } else {
       // Geolocation failed — reveal the manual fallback and explain why.
       setShowSearch(true);
@@ -111,6 +117,12 @@ function App() {
     if (coords) {
       loadWeather(coords.lat, coords.lon, locationLabel, next);
     }
+  }
+
+  function selectMatch(m: GeocodeResult) {
+    // Picking a city supersedes any in-flight reverse from "Use my location".
+    requestId.current++;
+    loadWeather(m.latitude, m.longitude, placeLabel(m));
   }
 
   return (
@@ -169,7 +181,7 @@ function App() {
         <ul className="matches">
           {matches.map((m) => (
             <li key={`${m.latitude},${m.longitude}`}>
-              <button onClick={() => loadWeather(m.latitude, m.longitude, placeLabel(m))}>
+              <button onClick={() => selectMatch(m)}>
                 {placeLabel(m)}
               </button>
             </li>
