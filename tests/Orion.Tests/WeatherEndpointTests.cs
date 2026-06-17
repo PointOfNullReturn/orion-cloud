@@ -135,6 +135,38 @@ public class WeatherEndpointTests : IClassFixture<OrionWebAppFactory>
     }
 
     [Fact]
+    public async Task GetWeather_AllowedOrigin_EchoesAccessControlAllowOriginHeader()
+    {
+        var meteo = StubProvider(Provider.OpenMeteo,
+            WeatherResponses.Metric(temperature: 10, providers: new[] { Provider.OpenMeteo }));
+        var client = _factory.WithProviders(meteo).CreateClient();
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/weather?lat=47.6&lon=-122.3");
+        request.Headers.Add("Origin", "http://localhost:5173");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.Contains("Access-Control-Allow-Origin"));
+        Assert.Equal("http://localhost:5173", response.Headers.GetValues("Access-Control-Allow-Origin").Single());
+    }
+
+    [Fact]
+    public async Task GetWeather_DisallowedOrigin_OmitsAccessControlAllowOriginHeader()
+    {
+        var meteo = StubProvider(Provider.OpenMeteo,
+            WeatherResponses.Metric(temperature: 10, providers: new[] { Provider.OpenMeteo }));
+        var client = _factory.WithProviders(meteo).CreateClient();
+
+        var request = new HttpRequestMessage(HttpMethod.Get, "/weather?lat=47.6&lon=-122.3");
+        request.Headers.Add("Origin", "https://evil.example.com");
+
+        var response = await client.SendAsync(request);
+
+        Assert.False(response.Headers.Contains("Access-Control-Allow-Origin"));
+    }
+
+    [Fact]
     public async Task GetWeather_ProviderThrows_Returns500ProblemDetailsWithoutLeakingException()
     {
         var meteo = StubProvider(Provider.OpenMeteo,

@@ -24,6 +24,7 @@ public sealed class OrionWebAppFactory : WebApplicationFactory<Program>
                 ["Weather:OpenWeather:ApiKey"] = "test-key",
                 ["Weather:RateLimit:PermitLimit"] = "2",
                 ["Weather:RateLimit:WindowSeconds"] = "60",
+                ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
             });
         });
     }

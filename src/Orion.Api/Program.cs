@@ -17,6 +17,21 @@ builder.Services.AddProblemDetails();
 builder.Services.Configure<WeatherOptions>(
     builder.Configuration.GetSection(WeatherOptions.SectionName));
 
+builder.Services.Configure<CorsOptions>(
+    builder.Configuration.GetSection(CorsOptions.SectionName));
+
+builder.Services.AddCors();
+builder.Services.AddOptions<Microsoft.AspNetCore.Cors.Infrastructure.CorsOptions>()
+    .Configure<IOptions<CorsOptions>>((aspCors, myCors) =>
+    {
+        var policy = new Microsoft.AspNetCore.Cors.Infrastructure.CorsPolicyBuilder()
+            .WithOrigins(myCors.Value.AllowedOrigins)
+            .WithMethods("GET")
+            .SetPreflightMaxAge(TimeSpan.FromHours(1))
+            .Build();
+        aspCors.AddPolicy("OrionFrontend", policy);
+    });
+
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -84,6 +99,7 @@ var app = builder.Build();
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseCors("OrionFrontend");
 app.UseRateLimiter();
 
 if (app.Environment.IsDevelopment())
