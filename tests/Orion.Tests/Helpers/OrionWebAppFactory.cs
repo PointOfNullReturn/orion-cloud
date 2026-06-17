@@ -24,6 +24,7 @@ public sealed class OrionWebAppFactory : WebApplicationFactory<Program>
                 ["Weather:OpenWeather:ApiKey"] = "test-key",
                 ["Weather:RateLimit:PermitLimit"] = "2",
                 ["Weather:RateLimit:WindowSeconds"] = "60",
+                ["Geocoding:BaseUrl"] = "http://localhost/geocoding/",
                 ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
             });
         });
@@ -37,5 +38,12 @@ public sealed class OrionWebAppFactory : WebApplicationFactory<Program>
             {
                 services.AddSingleton(provider);
             }
+        }));
+
+    public WebApplicationFactory<Program> WithGeocoding(IGeocodingService geocoding) =>
+        WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IGeocodingService>();
+            services.AddSingleton(geocoding);
         }));
 }

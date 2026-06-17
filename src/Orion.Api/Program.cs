@@ -17,6 +17,9 @@ builder.Services.AddProblemDetails();
 builder.Services.Configure<WeatherOptions>(
     builder.Configuration.GetSection(WeatherOptions.SectionName));
 
+builder.Services.Configure<GeocodingOptions>(
+    builder.Configuration.GetSection(GeocodingOptions.SectionName));
+
 builder.Services.Configure<CorsOptions>(
     builder.Configuration.GetSection(CorsOptions.SectionName));
 
@@ -88,6 +91,12 @@ builder.Services.AddHttpClient<OpenWeatherProvider>((sp, client) =>
 })
 .AddHttpMessageHandler<OpenWeatherApiKeyHandler>()
 .RemoveAllLoggers();
+
+builder.Services.AddHttpClient<IGeocodingService, GeocodingService>((sp, client) =>
+{
+    var opts = sp.GetRequiredService<IOptions<GeocodingOptions>>().Value;
+    client.BaseAddress = new Uri(opts.BaseUrl);
+});
 
 builder.Services.AddTransient<IWeatherProvider>(sp => sp.GetRequiredService<OpenMeteoProvider>());
 builder.Services.AddTransient<IWeatherProvider>(sp => sp.GetRequiredService<OpenWeatherProvider>());
@@ -165,6 +174,25 @@ app.MapGet("/weather", async (
     }
 
     return Results.Ok(unitsValue == Units.Imperial ? UnitConverter.ToImperial(response) : response);
+}).RequireRateLimiting("weather-per-ip");
+
+app.MapGet("/geocode", async (
+    string? q,
+    int? count,
+    IGeocodingService geocoding,
+    CancellationToken cancellationToken) =>
+{
+    if (string.IsNullOrWhiteSpace(q))
+    {
+        return Results.Problem(
+            title: "Invalid query parameter",
+            detail: "Query parameter 'q' is required.",
+            statusCode: 400);
+    }
+
+    var resultCount = Math.Clamp(count ?? 5, 1, 5);
+    var results = await geocoding.SearchAsync(q, resultCount, cancellationToken);
+    return Results.Ok(results);
 }).RequireRateLimiting("weather-per-ip");
 
 app.Run();
