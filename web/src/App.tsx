@@ -71,6 +71,7 @@ function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [source, setSource] = useState<Source | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   // Monotonic id for location requests. A slow reverse-geocode from "Use my
   // location" must not overwrite the label once a newer location supersedes it.
@@ -135,28 +136,39 @@ function App() {
 
   async function useMyLocation() {
     const id = ++requestId.current;
-    setPhase("busy");
+    // Re-acquiring while a result is already on screen: reload "silently" so the
+    // card keeps its current contents and swaps in place when the new data
+    // arrives, instead of collapsing to a spinner during the (sometimes slow)
+    // geolocation lookup. The dimmed controls signal that it's working.
+    const silent = phase === "ready" && weather != null;
+    if (!silent) setPhase("busy");
     setMessage(null);
     setIsError(false);
     setLastFailure(null);
     setSearchOpen(false);
+    setMatches(null);
+    setLocating(true);
 
-    const pos = await getCurrentPosition();
-    if (pos.ok) {
-      setSource("location");
-      // Reverse-geocode in parallel with the weather fetch. Weather paints first
-      // (coords as the heading); the place name fills in when reverse resolves.
-      const reverse = fetchReverse(pos.latitude, pos.longitude);
-      await loadWeather(pos.latitude, pos.longitude, null);
-      const place = await reverse;
-      // Ignore a stale reverse: a newer location request has superseded this one.
-      if (place && requestId.current === id) setLocationLabel(placeLabel(place));
-    } else {
-      // Record the failure; the launcher reacts declaratively — search becomes
-      // the hero and `note` explains why. Hard failures (denied/unsupported)
-      // drop to search-only; transient ones leave a "try again" affordance.
-      setLastFailure(pos.kind);
-      setPhase("idle");
+    try {
+      const pos = await getCurrentPosition();
+      if (pos.ok) {
+        setSource("location");
+        // Reverse-geocode in parallel with the weather fetch. Weather paints
+        // first (coords as the heading); place name fills in when reverse lands.
+        const reverse = fetchReverse(pos.latitude, pos.longitude);
+        await loadWeather(pos.latitude, pos.longitude, null, units, silent);
+        const place = await reverse;
+        // Ignore a stale reverse: a newer request has superseded this one.
+        if (place && requestId.current === id) setLocationLabel(placeLabel(place));
+      } else {
+        // Record the failure; the launcher reacts declaratively — search becomes
+        // the hero and `note` explains why. Hard failures (denied/unsupported)
+        // drop to search-only; transient ones leave a "try again" affordance.
+        setLastFailure(pos.kind);
+        if (!silent) setPhase("idle");
+      }
+    } finally {
+      setLocating(false);
     }
   }
 
@@ -260,7 +272,7 @@ function App() {
                         type="button"
                         className={`icon-btn${source === "location" ? " active" : ""}`}
                         onClick={useMyLocation}
-                        disabled={busy}
+                        disabled={busy || locating}
                         aria-label="Get weather by current location"
                         title="Get weather by current location"
                       >
@@ -271,7 +283,7 @@ function App() {
                       type="button"
                       className={`icon-btn${source === "search" ? " active" : ""}`}
                       onClick={toggleSearch}
-                      disabled={busy}
+                      disabled={busy || locating}
                       aria-expanded={searchOpen}
                       aria-label="Get weather by city search"
                       title="Get weather by city search"

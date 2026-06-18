@@ -20,7 +20,7 @@
   padding: 3px;
   border: 1px solid var(--border);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--surface);
 }
 
 .theme-toggle button {
@@ -86,7 +86,7 @@
    source = the "what mode it's in" indicator. */
 .icon-btn {
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   padding: 10px;
   border-radius: 10px;
@@ -147,7 +147,7 @@ button {
   cursor: pointer;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text-h);
   padding: 10px 16px;
   transition: border-color 0.15s, background 0.15s;
@@ -189,7 +189,7 @@ button.link {
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text-h);
 }
 
@@ -258,7 +258,7 @@ button.link {
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: var(--shadow);
-  background: var(--bg);
+  background: var(--surface);
   backface-visibility: hidden;
 }
 
@@ -292,7 +292,7 @@ button.link {
   bottom: 14px;
   right: 14px;
   border: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--surface);
   color: var(--text);
   padding: 10px;
   border-radius: 10px;
