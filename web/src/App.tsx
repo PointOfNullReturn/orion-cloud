@@ -6,7 +6,18 @@ import { getCurrentPosition } from "./location/geolocation";
 import { parseCityQuery, prioritizeByHint } from "./location/cityQuery";
 import { apiErrorMessage, geolocationMessage } from "./ui/messages";
 import { WeatherCard } from "./ui/WeatherCard";
+import { ThemeToggle } from "./ui/ThemeToggle";
 import "./App.css";
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
 
 type Phase = "idle" | "busy" | "ready" | "error";
 
@@ -28,6 +39,7 @@ function App() {
   const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<GeocodeResult[] | null>(null);
+  const [flipped, setFlipped] = useState(false);
 
   // Monotonic id for location requests. A slow reverse-geocode from "Use my
   // location" must not overwrite the label once a newer location supersedes it.
@@ -46,11 +58,18 @@ function App() {
     lon: number,
     label: string | null,
     nextUnits: Units = units,
+    silent = false,
   ) {
-    setPhase("busy");
+    // Silent reload (used for a units change): keep the current weather on
+    // screen and the card on whatever face it's showing — don't drop to the
+    // "busy" state, which would unmount the card, collapse its height, and make
+    // the 3D-rotated widget appear to flip back to the front.
+    if (!silent) {
+      setPhase("busy");
+      setMatches(null);
+    }
     setMessage(null);
     setIsError(false);
-    setMatches(null);
 
     const result = await fetchWeather(lat, lon, nextUnits);
     if (result.ok) {
@@ -115,7 +134,7 @@ function App() {
     if (next === units) return;
     setUnits(next);
     if (coords) {
-      loadWeather(coords.lat, coords.lon, locationLabel, next);
+      loadWeather(coords.lat, coords.lon, locationLabel, next, true);
     }
   }
 
@@ -127,76 +146,125 @@ function App() {
 
   return (
     <main className="app">
-      <header className="masthead">
-        <h1>Orion</h1>
-        <p className="tagline">Current weather, aggregated from multiple sources.</p>
-      </header>
-
-      <div className="controls">
-        <button className="primary" onClick={useMyLocation} disabled={busy}>
-          Use my location
-        </button>
-        <button
-          className="link"
-          onClick={() => setShowSearch((s) => !s)}
-          disabled={busy}
-        >
-          Search by city
-        </button>
-
-        <div className="units" role="group" aria-label="Units">
-          <button
-            className={units === "metric" ? "active" : ""}
-            onClick={() => changeUnits("metric")}
-            disabled={busy}
-          >
-            °C
-          </button>
-          <button
-            className={units === "imperial" ? "active" : ""}
-            onClick={() => changeUnits("imperial")}
-            disabled={busy}
-          >
-            °F
-          </button>
-        </div>
+      <div className="theme-bar">
+        <ThemeToggle />
       </div>
 
-      {showSearch && (
-        <form className="search" onSubmit={search}>
-          <input
-            type="text"
-            placeholder="City name…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="City name"
-          />
-          <button type="submit" disabled={busy || !query.trim()}>
-            Search
-          </button>
-        </form>
-      )}
+      <div className="widget">
+        <div className={`flip${flipped ? " flipped" : ""}`}>
+          {/* Front — the whole app. inert when flipped away. */}
+          <section className="face card" inert={flipped || undefined}>
+            <button
+              className="cog"
+              type="button"
+              onClick={() => setFlipped(true)}
+              aria-label="Settings"
+              title="Settings"
+            >
+              <GearIcon />
+            </button>
 
-      {matches && matches.length > 0 && (
-        <ul className="matches">
-          {matches.map((m) => (
-            <li key={`${m.latitude},${m.longitude}`}>
-              <button onClick={() => selectMatch(m)}>
-                {placeLabel(m)}
+            <header className="masthead">
+              <h1>Orion</h1>
+              <p className="tagline">
+                Current weather, aggregated from multiple sources.
+              </p>
+            </header>
+
+            <div className="controls">
+              <button className="primary" onClick={useMyLocation} disabled={busy}>
+                Use my location
               </button>
-            </li>
-          ))}
-        </ul>
-      )}
+              <button
+                className="link"
+                onClick={() => setShowSearch((s) => !s)}
+                disabled={busy}
+              >
+                Search by city
+              </button>
+            </div>
 
-      {busy && <p className="status">Loading…</p>}
-      {message && (
-        <p className={isError ? "status error" : "status hint"}>{message}</p>
-      )}
+            {showSearch && (
+              <form className="search" onSubmit={search}>
+                <input
+                  type="text"
+                  placeholder="City name…"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  aria-label="City name"
+                />
+                <button type="submit" disabled={busy || !query.trim()}>
+                  Search
+                </button>
+              </form>
+            )}
 
-      {phase === "ready" && weather && (
-        <WeatherCard weather={weather} locationLabel={locationLabel} />
-      )}
+            {matches && matches.length > 0 && (
+              <ul className="matches">
+                {matches.map((m) => (
+                  <li key={`${m.latitude},${m.longitude}`}>
+                    <button onClick={() => selectMatch(m)}>{placeLabel(m)}</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {busy && <p className="status">Loading…</p>}
+            {message && (
+              <p className={isError ? "status error" : "status hint"}>{message}</p>
+            )}
+
+            {phase === "ready" && weather && (
+              <WeatherCard weather={weather} locationLabel={locationLabel} />
+            )}
+          </section>
+
+          {/* Back — settings. inert until flipped into view. */}
+          <div className="face card-back" inert={!flipped || undefined}>
+            <div className="settings-head">
+              <h2>Settings</h2>
+            </div>
+
+            <div className="setting">
+              <span className="setting-label">Units</span>
+              <div className="unit-options" role="radiogroup" aria-label="Units">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={units === "metric"}
+                  className={`unit-option${units === "metric" ? " active" : ""}`}
+                  onClick={() => changeUnits("metric")}
+                >
+                  <span className="unit-name">Metric</span>
+                  <span className="unit-desc">
+                    Celsius and km/h. Used in most of the world.
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={units === "imperial"}
+                  className={`unit-option${units === "imperial" ? " active" : ""}`}
+                  onClick={() => changeUnits("imperial")}
+                >
+                  <span className="unit-name">Imperial</span>
+                  <span className="unit-desc">
+                    Fahrenheit and mph. Common in the United States.
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <button
+              className="primary done"
+              type="button"
+              onClick={() => setFlipped(false)}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

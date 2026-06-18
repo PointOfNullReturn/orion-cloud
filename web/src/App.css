@@ -7,6 +7,57 @@
   text-align: left;
 }
 
+/* Theme toggle ---------------------------------------------------------- */
+.theme-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+.theme-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.theme-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 7px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.theme-toggle button:hover:not(:disabled) {
+  color: var(--text-h);
+  border-color: transparent;
+}
+
+.theme-toggle button.active {
+  background: var(--accent-bg);
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.theme-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 480px) {
+  /* Tighten to icons only on very narrow screens. */
+  .theme-toggle button span {
+    display: none;
+  }
+}
+
 .masthead {
   text-align: center;
   margin-bottom: 32px;
@@ -15,7 +66,8 @@
 .masthead h1 {
   margin: 0;
   font-size: 48px;
-  letter-spacing: -1.5px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
 }
 
 .tagline {
@@ -64,25 +116,6 @@ button.link {
   background: transparent;
   color: var(--accent);
   padding-inline: 4px;
-}
-
-.units {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.units button {
-  border: none;
-  border-radius: 0;
-  padding: 10px 14px;
-}
-
-.units button.active {
-  background: var(--accent-bg);
-  color: var(--text-h);
-  font-weight: 600;
 }
 
 /* Search + matches ------------------------------------------------------ */
@@ -135,18 +168,137 @@ button.link {
   color: var(--text);
 }
 
-/* Weather card ---------------------------------------------------------- */
-.card {
+/* Flip widget ----------------------------------------------------------- */
+.widget {
+  perspective: 1400px;
   margin-top: 28px;
+}
+
+.flip {
+  display: grid;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4, 0.15, 0.2, 1);
+}
+
+.flip.flipped {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip {
+    transition: none;
+  }
+}
+
+/* Both faces occupy the same grid cell, so the widget sizes to the taller
+   face — no height jump on flip. backface-visibility hides the away side. */
+.face {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  position: relative;
   padding: 28px;
   border: 1px solid var(--border);
   border-radius: 16px;
   box-shadow: var(--shadow);
+  background: var(--bg);
+  backface-visibility: hidden;
+}
+
+.card {
   text-align: center;
 }
 
 .card h2 {
   margin: 0;
+}
+
+/* Weather details, now nested in the front face below the controls. */
+.weather {
+  margin-top: 28px;
+}
+
+.card-back {
+  transform: rotateY(180deg);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cog / settings trigger (front, bottom-right corner — Dashboard convention) */
+.cog {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  padding: 6px;
+  border-radius: 8px;
+  line-height: 0;
+}
+
+.cog:hover:not(:disabled) {
+  color: var(--text-h);
+  border-color: transparent;
+}
+
+.cog svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Settings (card back) */
+.settings-head h2 {
+  margin: 0 0 20px;
+}
+
+.setting {
+  margin-bottom: 20px;
+}
+
+.setting-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.unit-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.unit-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.unit-option.active {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.unit-name {
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.unit-desc {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.done {
+  width: 100%;
+  margin-top: auto;
 }
 
 .condition {

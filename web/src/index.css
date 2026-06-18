@@ -30,8 +30,28 @@
   }
 }
 
+/* Dark theme variables. Applied when the user explicitly picks Dark
+   (data-theme="dark"), OR when they follow the System preference
+   (data-theme="system" / no attribute yet) and the OS reports dark. Light is
+   the default in :root above. NOTE: the two blocks below are identical — keep
+   them in sync (plain CSS can't share a declaration block across a media rule). */
+:root[data-theme='dark'] {
+  --text: #9ca3af;
+  --text-h: #f3f4f6;
+  --bg: #16171d;
+  --border: #2e303a;
+  --code-bg: #1f2028;
+  --accent: #c084fc;
+  --accent-bg: rgba(192, 132, 252, 0.15);
+  --accent-border: rgba(192, 132, 252, 0.5);
+  --social-bg: rgba(47, 48, 58, 0.5);
+  --shadow:
+    rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root[data-theme='system'],
+  :root:not([data-theme]) {
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
@@ -44,10 +64,15 @@
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
   }
+}
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+/* Native form controls / scrollbars follow the explicit choice. System keeps
+   the base `color-scheme: light dark` declared on :root. */
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 #root {

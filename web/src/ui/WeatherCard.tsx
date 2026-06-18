@@ -14,6 +14,8 @@ function degToCompass(deg: number): string {
   return COMPASS[Math.round(deg / 22.5) % 16];
 }
 
+// Weather details only. The card box, flip, and settings live in the widget
+// shell (App); this renders into the front face when weather is ready.
 export function WeatherCard({
   weather,
   locationLabel,
@@ -67,7 +69,7 @@ export function WeatherCard({
     .join(", ");
 
   return (
-    <section className="card">
+    <div className="weather">
       <h2>{heading}</h2>
       {weather.condition && <p className="condition">{weather.condition}</p>}
 
@@ -88,6 +90,6 @@ export function WeatherCard({
       <p className="sources">
         {sources ? `Sources: ${sources}` : "No sources reported"}
       </p>
-    </section>
+    </div>
   );
 }
