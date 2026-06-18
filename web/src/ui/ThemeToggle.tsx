@@ -36,10 +36,10 @@ function MonitorIcon() {
 }
 
 const OPTIONS = [
-  { mode: "system", label: "System", Icon: MonitorIcon },
-  { mode: "light", label: "Light", Icon: SunIcon },
-  { mode: "dark", label: "Dark", Icon: MoonIcon },
-] as const satisfies readonly { mode: ThemeMode; label: string; Icon: () => React.ReactElement }[];
+  { mode: "system", tip: "Theme: System Default", Icon: MonitorIcon },
+  { mode: "light", tip: "Theme: Light", Icon: SunIcon },
+  { mode: "dark", tip: "Theme: Dark", Icon: MoonIcon },
+] as const satisfies readonly { mode: ThemeMode; tip: string; Icon: () => React.ReactElement }[];
 
 export function ThemeToggle() {
   const [mode, setMode] = useState<ThemeMode>(() => loadThemeMode());
@@ -52,14 +52,14 @@ export function ThemeToggle() {
 
   return (
     <div className="theme-toggle" role="group" aria-label="Color theme">
-      {OPTIONS.map(({ mode: m, label, Icon }) => (
+      {OPTIONS.map(({ mode: m, tip, Icon }) => (
         <button
           key={m}
           type="button"
           className={mode === m ? "active" : ""}
           aria-pressed={mode === m}
-          aria-label={label}
-          title={label}
+          aria-label={tip}
+          title={tip}
           onClick={() => setMode(m)}
         >
           <Icon />
