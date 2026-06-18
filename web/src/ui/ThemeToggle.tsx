@@ -58,11 +58,11 @@ export function ThemeToggle() {
           type="button"
           className={mode === m ? "active" : ""}
           aria-pressed={mode === m}
+          aria-label={label}
           title={label}
           onClick={() => setMode(m)}
         >
           <Icon />
-          <span>{label}</span>
         </button>
       ))}
     </div>

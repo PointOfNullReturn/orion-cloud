@@ -146,14 +146,14 @@ function App() {
 
   return (
     <main className="app">
-      <div className="theme-bar">
-        <ThemeToggle />
-      </div>
-
       <div className="widget">
         <div className={`flip${flipped ? " flipped" : ""}`}>
           {/* Front — the whole app. inert when flipped away. */}
           <section className="face card" inert={flipped || undefined}>
+            <div className="theme-corner">
+              <ThemeToggle />
+            </div>
+
             <button
               className="cog"
               type="button"
@@ -167,7 +167,7 @@ function App() {
             <header className="masthead">
               <h1>Orion</h1>
               <p className="tagline">
-                Current weather, aggregated from multiple sources.
+                Weather aggregated from multiple sources.
               </p>
             </header>
 
@@ -221,9 +221,14 @@ function App() {
 
           {/* Back — settings. inert until flipped into view. */}
           <div className="face card-back" inert={!flipped || undefined}>
-            <div className="settings-head">
-              <h2>Settings</h2>
-            </div>
+            <header className="about">
+              <h2 className="wordmark">Orion</h2>
+              {/* Placeholder — real version/build wired from the build later. */}
+              <p className="version">v1.0 · build local</p>
+              <p className="about-tagline">
+                Weather aggregated from multiple sources.
+              </p>
+            </header>
 
             <div className="setting">
               <span className="setting-label">Units</span>
