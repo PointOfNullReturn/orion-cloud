@@ -60,7 +60,7 @@
 .wordmark-sm {
   text-align: left;
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--text-h);
@@ -116,6 +116,7 @@
 .masthead h1 {
   margin: 0;
   font-size: 48px;
+  font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
 }
@@ -230,10 +231,28 @@ button.link {
 .widget {
   perspective: 1400px;
   margin-top: 28px;
+  position: relative;
+}
+
+/* FROSTED GLASS SPIKE: the actual glass surface, static (not flipped) so its
+   backdrop-filter sits outside the 3D context. Fills the widget = card outline. */
+.glass-pane {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
 }
 
 .flip {
   display: grid;
+  position: relative;
+  z-index: 1;
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4, 0.15, 0.2, 1);
 }
@@ -250,15 +269,18 @@ button.link {
 
 /* Both faces occupy the same grid cell, so the widget sizes to the taller
    face — no height jump on flip. backface-visibility hides the away side. */
+/* Faces are now transparent content layers over the static .glass-pane;
+   they still carry the 3D flip + backface-visibility. */
 .face {
   grid-area: 1 / 1;
   box-sizing: border-box;
   position: relative;
   padding: 28px;
-  border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: var(--shadow);
-  background: var(--surface);
+  /* Explicit 0deg so the front is a 3D-transformed element the browser will
+     backface-cull; prefix is required for WebKit/Safari. */
+  transform: rotateY(0deg);
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
 
@@ -324,6 +346,7 @@ button.link {
 .about .wordmark {
   margin: 0;
   font-size: 18px;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: 2px;
   text-transform: uppercase;

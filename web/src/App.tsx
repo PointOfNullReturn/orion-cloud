@@ -243,6 +243,9 @@ function App() {
   return (
     <main className="app">
       <div className="widget">
+        {/* Static glass surface behind the flipping faces — keeps backdrop-filter
+            out of the 3D (preserve-3d) context, which breaks the blur. */}
+        <div className="glass-pane" aria-hidden="true" />
         <div className={`flip${flipped ? " flipped" : ""}`}>
           {/* Front — the whole app. inert when flipped away. */}
           <section className="face card" inert={flipped || undefined}>

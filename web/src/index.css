@@ -2,7 +2,7 @@
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #f2f2f5;
-  --surface: #fff;
+  --surface: rgba(255, 255, 255, 0.45);
   --border: #e5e4e7;
   --code-bg: #f4f3ec;
   --accent: #aa3bff;
@@ -40,7 +40,7 @@
   --text: #9ca3af;
   --text-h: #f3f4f6;
   --bg: #16171d;
-  --surface: #1e2028;
+  --surface: rgba(30, 32, 40, 0.35);
   --border: #2e303a;
   --code-bg: #1f2028;
   --accent: #c084fc;
@@ -57,7 +57,7 @@
     --text: #9ca3af;
     --text-h: #f3f4f6;
     --bg: #16171d;
-    --surface: #1e2028;
+    --surface: rgba(30, 32, 40, 0.35);
     --border: #2e303a;
     --code-bg: #1f2028;
     --accent: #c084fc;
@@ -87,6 +87,16 @@
 
 body {
   margin: 0;
+  /* FROSTED GLASS SPIKE: a richer backdrop for the card's blur to refract.
+     A flat color gives glass nothing to show; these soft color glows do. */
+  min-height: 100svh;
+  background:
+    radial-gradient(60% 50% at 15% 12%, rgba(170, 59, 255, 0.22), transparent 70%),
+    radial-gradient(55% 45% at 85% 18%, rgba(56, 135, 255, 0.2), transparent 70%),
+    radial-gradient(60% 60% at 80% 88%, rgba(255, 64, 160, 0.18), transparent 70%),
+    radial-gradient(55% 50% at 20% 85%, rgba(64, 214, 200, 0.16), transparent 70%),
+    var(--bg);
+  background-attachment: fixed;
 }
 
 h1,
