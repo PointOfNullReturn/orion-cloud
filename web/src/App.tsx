@@ -1,10 +1,12 @@
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { fetchWeather, type Units, type WeatherResponse } from "./api/weather";
 import { fetchGeocode, type GeocodeResult } from "./api/geocode";
 import { fetchReverse } from "./api/reverse";
-import { getCurrentPosition } from "./location/geolocation";
+import { getCurrentPosition, type GeolocationErrorKind } from "./location/geolocation";
 import { parseCityQuery, prioritizeByHint } from "./location/cityQuery";
-import { apiErrorMessage, geolocationMessage } from "./ui/messages";
+import { decideLocationMode, type PermissionState } from "./location/locationUx";
+import { readGeolocationPermission } from "./location/permission";
+import { apiErrorMessage, locationNote } from "./ui/messages";
 import { WeatherCard } from "./ui/WeatherCard";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import "./App.css";
@@ -19,7 +21,32 @@ function GearIcon() {
   );
 }
 
+function LocateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="7" />
+      <line x1="12" y1="1" x2="12" y2="4" />
+      <line x1="12" y1="20" x2="12" y2="23" />
+      <line x1="1" y1="12" x2="4" y2="12" />
+      <line x1="20" y1="12" x2="23" y2="12" />
+      <circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+    </svg>
+  );
+}
+
 type Phase = "idle" | "busy" | "ready" | "error";
+type Source = "location" | "search";
 
 function placeLabel(r: GeocodeResult): string {
   // Use the country code, not the name — BigDataCloud returns verbose official
@@ -36,16 +63,37 @@ function App() {
   const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<GeocodeResult[] | null>(null);
   const [flipped, setFlipped] = useState(false);
+  const [permission, setPermission] = useState<PermissionState>("unknown");
+  const [lastFailure, setLastFailure] = useState<GeolocationErrorKind | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [source, setSource] = useState<Source | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   // Monotonic id for location requests. A slow reverse-geocode from "Use my
   // location" must not overwrite the label once a newer location supersedes it.
   const requestId = useRef(0);
 
+  // Read the geolocation permission silently at load (Permissions API where
+  // available). A known-denied user lands in search-first with no wasted tap;
+  // where the API is absent (Safari), this stays "unknown" and we learn from
+  // the first attempt instead.
+  useEffect(() => {
+    let active = true;
+    readGeolocationPermission().then((state) => {
+      if (active) setPermission(state);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const busy = phase === "busy";
+  const supported = "geolocation" in navigator;
+  const mode = decideLocationMode({ supported, permission, lastFailure });
+  const note = locationNote(supported, permission, lastFailure);
 
   function setError(text: string) {
     setMessage(text);
@@ -77,6 +125,9 @@ function App() {
       setCoords({ lat, lon });
       setLocationLabel(label);
       setPhase("ready");
+      // Once we've shown a result we stay in the compact chrome — even while
+      // searching for a new place — rather than snapping back to the launcher.
+      setHasLoaded(true);
     } else {
       setError(apiErrorMessage(result.kind));
     }
@@ -87,9 +138,12 @@ function App() {
     setPhase("busy");
     setMessage(null);
     setIsError(false);
+    setLastFailure(null);
+    setSearchOpen(false);
 
     const pos = await getCurrentPosition();
     if (pos.ok) {
+      setSource("location");
       // Reverse-geocode in parallel with the weather fetch. Weather paints first
       // (coords as the heading); the place name fills in when reverse resolves.
       const reverse = fetchReverse(pos.latitude, pos.longitude);
@@ -98,10 +152,10 @@ function App() {
       // Ignore a stale reverse: a newer location request has superseded this one.
       if (place && requestId.current === id) setLocationLabel(placeLabel(place));
     } else {
-      // Geolocation failed — reveal the manual fallback and explain why.
-      setShowSearch(true);
-      setMessage(geolocationMessage(pos.kind));
-      setIsError(false);
+      // Record the failure; the launcher reacts declaratively — search becomes
+      // the hero and `note` explains why. Hard failures (denied/unsupported)
+      // drop to search-only; transient ones leave a "try again" affordance.
+      setLastFailure(pos.kind);
       setPhase("idle");
     }
   }
@@ -141,8 +195,38 @@ function App() {
   function selectMatch(m: GeocodeResult) {
     // Picking a city supersedes any in-flight reverse from "Use my location".
     requestId.current++;
+    setSource("search");
+    // Collapse the search once a city is chosen (your flow: search → pick → gone).
+    setSearchOpen(false);
+    setQuery("");
     loadWeather(m.latitude, m.longitude, placeLabel(m));
   }
+
+  function toggleSearch() {
+    setSearchOpen((open) => {
+      if (open) {
+        // Closing: drop any pending matches/message so it reopens clean.
+        setMatches(null);
+        setMessage(null);
+      }
+      return !open;
+    });
+  }
+
+  const searchForm = (
+    <form className="search" onSubmit={search}>
+      <input
+        type="text"
+        placeholder="Search for a city…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search for a city"
+      />
+      <button type="submit" disabled={busy || !query.trim()}>
+        Search
+      </button>
+    </form>
+  );
 
   return (
     <main className="app">
@@ -158,45 +242,82 @@ function App() {
               className="cog"
               type="button"
               onClick={() => setFlipped(true)}
-              aria-label="Settings"
-              title="Settings"
+              aria-label="Configuration"
+              title="Configuration"
             >
               <GearIcon />
             </button>
 
-            <header className="masthead">
-              <h1>Orion</h1>
-              <p className="tagline">
-                Weather aggregated from multiple sources.
-              </p>
-            </header>
+            {hasLoaded ? (
+              <>
+                {/* Compact chrome: minimal wordmark + mode controls. The lit
+                    icon shows how the current result was obtained. */}
+                <div className="result-head">
+                  <div className="wordmark-sm">Orion</div>
+                  <div className="mode-controls">
+                    {mode !== "search-only" && (
+                      <button
+                        type="button"
+                        className={`icon-btn${source === "location" ? " active" : ""}`}
+                        onClick={useMyLocation}
+                        disabled={busy}
+                        aria-label="Get weather by current location"
+                        title="Get weather by current location"
+                      >
+                        <LocateIcon />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={`icon-btn${source === "search" ? " active" : ""}`}
+                      onClick={toggleSearch}
+                      disabled={busy}
+                      aria-expanded={searchOpen}
+                      aria-label="Get weather by city search"
+                      title="Get weather by city search"
+                    >
+                      <SearchIcon />
+                    </button>
+                  </div>
+                </div>
 
-            <div className="controls">
-              <button className="primary" onClick={useMyLocation} disabled={busy}>
-                Use my location
-              </button>
-              <button
-                className="link"
-                onClick={() => setShowSearch((s) => !s)}
-                disabled={busy}
-              >
-                Search by city
-              </button>
-            </div>
+                {searchOpen && <div className="result-search">{searchForm}</div>}
+              </>
+            ) : (
+              <>
+                <header className="masthead">
+                  <h1>Orion</h1>
+                  <p className="tagline">
+                    Weather aggregated from multiple sources.
+                  </p>
+                </header>
 
-            {showSearch && (
-              <form className="search" onSubmit={search}>
-                <input
-                  type="text"
-                  placeholder="City name…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  aria-label="City name"
-                />
-                <button type="submit" disabled={busy || !query.trim()}>
-                  Search
-                </button>
-              </form>
+                <div className="launcher">
+                  {/* Location leads only when it can; otherwise search is hero. */}
+                  {mode === "location-first" && (
+                    <>
+                      <button
+                        className="primary"
+                        onClick={useMyLocation}
+                        disabled={busy}
+                      >
+                        Use my location
+                      </button>
+                      <div className="or">or</div>
+                    </>
+                  )}
+
+                  {searchForm}
+
+                  {note && <p className="status hint">{note}</p>}
+
+                  {mode === "search-retry" && (
+                    <button className="link" onClick={useMyLocation} disabled={busy}>
+                      Try my location again
+                    </button>
+                  )}
+                </div>
+              </>
             )}
 
             {matches && matches.length > 0 && (
@@ -223,11 +344,11 @@ function App() {
           <div className="face card-back" inert={!flipped || undefined}>
             <header className="about">
               <h2 className="wordmark">Orion</h2>
-              {/* Placeholder — real version/build wired from the build later. */}
-              <p className="version">v1.0 · build local</p>
               <p className="about-tagline">
                 Weather aggregated from multiple sources.
               </p>
+              {/* Placeholder — real version/build wired from the build later. */}
+              <p className="version">v1.0 · build local</p>
             </header>
 
             <div className="setting">

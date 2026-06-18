@@ -56,6 +56,63 @@
   margin-bottom: 32px;
 }
 
+/* Compact brand mark shown in result state in place of the full masthead. */
+.wordmark-sm {
+  text-align: left;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-h);
+}
+
+/* Result-state header: minimal wordmark on the left, mode controls right. */
+.result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.mode-controls {
+  display: flex;
+  gap: 8px;
+  /* Pull right into the padding so the search button's right edge lines up
+     with the cog below it (cog is absolute at right:14px; content pad is 28px). */
+  margin-right: -14px;
+}
+
+/* Cog-matched icon buttons (locate + search). `.active` marks the current
+   source = the "what mode it's in" indicator. */
+.icon-btn {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  padding: 10px;
+  border-radius: 10px;
+  line-height: 0;
+}
+
+.icon-btn:hover:not(:disabled) {
+  color: var(--text-h);
+  border-color: var(--border);
+}
+
+.icon-btn.active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.result-search {
+  margin-bottom: 20px;
+}
+
 .masthead h1 {
   margin: 0;
   font-size: 48px;
@@ -68,13 +125,21 @@
   margin-top: 6px;
 }
 
-/* Controls -------------------------------------------------------------- */
-.controls {
+/* Launcher (location + search) ------------------------------------------ */
+.launcher {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  justify-content: center;
+  gap: 14px;
+}
+
+.launcher .primary {
+  min-width: 200px;
+}
+
+.or {
+  font-size: 13px;
+  color: var(--text);
 }
 
 button {
@@ -115,7 +180,7 @@ button.link {
 .search {
   display: flex;
   gap: 8px;
-  margin-top: 16px;
+  width: 100%;
 }
 
 .search input {
@@ -199,6 +264,10 @@ button.link {
 
 .card {
   text-align: center;
+  /* Reserve a rail at the bottom for the corner controls (theme + gear, both
+     absolutely positioned at bottom:14px, ~38px tall) so weather content —
+     the Sources line especially — never collides with them. */
+  padding-bottom: 64px;
 }
 
 .card h2 {
@@ -254,21 +323,23 @@ button.link {
 
 .about .wordmark {
   margin: 0;
-  font-size: 30px;
+  font-size: 18px;
+  line-height: 1;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--text-h);
 }
 
-.about .version {
-  margin: 2px 0 0;
-  font-size: 13px;
+.about .about-tagline {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1;
   color: var(--text);
 }
 
-.about .about-tagline {
+.about .version {
   margin: 10px 0 0;
-  font-size: 16px;
+  font-size: 13px;
   color: var(--text);
 }
 

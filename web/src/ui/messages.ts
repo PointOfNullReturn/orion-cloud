@@ -1,5 +1,6 @@
 import type { ErrorKind } from "../api/http";
 import type { GeolocationErrorKind } from "../location/geolocation";
+import type { PermissionState } from "../location/locationUx";
 
 // Turns machine-readable failure kinds into user-facing copy. The user never
 // sees a raw kind or a status code — only rate-limiting gets a distinct nudge;
@@ -14,15 +15,26 @@ export function apiErrorMessage(kind: ErrorKind): string {
   return GENERIC;
 }
 
-export function geolocationMessage(kind: GeolocationErrorKind): string {
-  switch (kind) {
-    case "denied":
-      return "Location access was blocked. Search for your city instead.";
-    case "unsupported":
-      return "Location isn't available on this device. Search for your city instead.";
-    case "timeout":
-      return "Getting your location took too long. Search for your city instead.";
-    case "unavailable":
-      return "We couldn't determine your location. Search for your city instead.";
+// Explains, when relevant, *why* location isn't leading — so a missing or
+// demoted location action isn't a mystery. Returns null when location is fine
+// (the happy path, where no note is needed). Copy no longer says "search
+// instead": in every non-null case search is already the obvious hero.
+export function locationNote(
+  supported: boolean,
+  permission: PermissionState,
+  lastFailure: GeolocationErrorKind | null,
+): string | null {
+  if (!supported || lastFailure === "unsupported") {
+    return "Location isn't available on this device.";
   }
+  if (permission === "denied" || lastFailure === "denied") {
+    return "Location is blocked — you can re-enable it in your browser's site settings.";
+  }
+  if (lastFailure === "timeout") {
+    return "Getting your location took too long.";
+  }
+  if (lastFailure === "unavailable") {
+    return "We couldn't determine your location.";
+  }
+  return null;
 }

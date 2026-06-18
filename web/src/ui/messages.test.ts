@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ErrorKind } from "../api/http";
-import type { GeolocationErrorKind } from "../location/geolocation";
-import { apiErrorMessage, geolocationMessage } from "./messages";
+import { apiErrorMessage, locationNote } from "./messages";
 
 describe("apiErrorMessage", () => {
   it("gives rate-limited its own distinct, gentle message", () => {
@@ -34,18 +33,42 @@ describe("apiErrorMessage", () => {
   });
 });
 
-describe("geolocationMessage", () => {
-  it("returns fallback-guiding copy for every kind", () => {
-    const kinds: GeolocationErrorKind[] = [
-      "denied",
-      "unavailable",
-      "timeout",
-      "unsupported",
+describe("locationNote", () => {
+  it("returns null on the happy path (supported, not blocked, no failure)", () => {
+    expect(locationNote(true, "prompt", null)).toBeNull();
+    expect(locationNote(true, "granted", null)).toBeNull();
+    expect(locationNote(true, "unknown", null)).toBeNull();
+  });
+
+  it("explains an unsupported device", () => {
+    expect(locationNote(false, "unknown", null)?.toLowerCase()).toContain("device");
+    expect(locationNote(true, "unknown", "unsupported")?.toLowerCase()).toContain("device");
+  });
+
+  it("points a blocked user to browser settings (proactive or after a tap)", () => {
+    const proactive = locationNote(true, "denied", null);
+    const reactive = locationNote(true, "prompt", "denied");
+    expect(proactive?.toLowerCase()).toContain("settings");
+    expect(reactive).toEqual(proactive);
+  });
+
+  it("gives transient failures their own calm copy", () => {
+    const timeout = locationNote(true, "prompt", "timeout");
+    const unavailable = locationNote(true, "prompt", "unavailable");
+    expect(timeout?.length).toBeGreaterThan(0);
+    expect(unavailable?.length).toBeGreaterThan(0);
+    expect(timeout).not.toEqual(unavailable);
+  });
+
+  it("never tells the user to 'search instead' — search is already the hero", () => {
+    const notes = [
+      locationNote(false, "unknown", null),
+      locationNote(true, "denied", null),
+      locationNote(true, "prompt", "timeout"),
+      locationNote(true, "prompt", "unavailable"),
     ];
-    for (const kind of kinds) {
-      const msg = geolocationMessage(kind);
-      expect(msg.length).toBeGreaterThan(0);
-      expect(msg.toLowerCase()).toContain("city"); // points user to manual search
+    for (const note of notes) {
+      expect(note?.toLowerCase()).not.toContain("instead");
     }
   });
 });
