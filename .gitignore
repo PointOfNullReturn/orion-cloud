@@ -58,3 +58,9 @@ nunit-*.xml
 
 # macOS
 .DS_Store
+
+# JetBrains IDEs (Rider / IntelliJ)
+.idea/
+
+# VS Code
+.vscode/
