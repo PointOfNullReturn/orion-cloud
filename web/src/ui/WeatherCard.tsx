@@ -97,7 +97,7 @@ export function WeatherCard({
 
       <p className="updated">{updated}</p>
       <p className="sources">
-        {sources ? `Data Sources: ${sources}` : "No sources reported"}
+        {sources ? `Weather data from: ${sources}` : "No sources reported"}
       </p>
     </div>
   );
