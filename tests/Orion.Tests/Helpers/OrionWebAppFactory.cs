@@ -25,7 +25,6 @@ public sealed class OrionWebAppFactory : WebApplicationFactory<Program>
                 ["Weather:RateLimit:PermitLimit"] = "2",
                 ["Weather:RateLimit:WindowSeconds"] = "60",
                 ["Geocoding:BaseUrl"] = "http://localhost/geocoding/",
-                ["ReverseGeocoding:BaseUrl"] = "http://localhost/reverse/",
                 ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
             });
         });
@@ -46,12 +45,5 @@ public sealed class OrionWebAppFactory : WebApplicationFactory<Program>
         {
             services.RemoveAll<IGeocodingService>();
             services.AddSingleton(geocoding);
-        }));
-
-    public WebApplicationFactory<Program> WithReverseGeocoding(IReverseGeocodingService reverseGeocoding) =>
-        WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
-        {
-            services.RemoveAll<IReverseGeocodingService>();
-            services.AddSingleton(reverseGeocoding);
         }));
 }

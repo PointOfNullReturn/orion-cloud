@@ -4,7 +4,9 @@ A weather service that aggregates **current conditions from multiple providers**
 (Open-Meteo + OpenWeather) behind a single API, with a React widget front end.
 The API merges sources on a best-effort basis — if one provider is unavailable
 the response still comes back with whatever answered — and also handles city
-search and reverse geocoding so the UI only ever talks to Orion.
+search. Reverse geocoding (turning your current location into a place name) runs
+client-side in the browser via BigDataCloud's free client-side API, per its
+fair-use terms.
 
 > **Status:** work in progress. Live URL and full API reference coming soon.
 
@@ -28,7 +30,6 @@ search and reverse geocoding so the UI only ever talks to Orion.
 | ---------- | ------------------------------------------------------------ |
 | `/weather` | Aggregated current weather: `?lat&lon&units[&provider]`      |
 | `/geocode` | City search → coordinates: `?q&count`                        |
-| `/reverse` | Coordinates → place name: `?lat&lon`                         |
 | `/health`  | Liveness probe                                               |
 
 Units default to metric; pass `?units=imperial` for Fahrenheit/mph. The response

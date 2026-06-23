@@ -20,9 +20,6 @@ builder.Services.Configure<WeatherOptions>(
 builder.Services.Configure<GeocodingOptions>(
     builder.Configuration.GetSection(GeocodingOptions.SectionName));
 
-builder.Services.Configure<ReverseGeocodingOptions>(
-    builder.Configuration.GetSection(ReverseGeocodingOptions.SectionName));
-
 builder.Services.Configure<CorsOptions>(
     builder.Configuration.GetSection(CorsOptions.SectionName));
 
@@ -98,12 +95,6 @@ builder.Services.AddHttpClient<OpenWeatherProvider>((sp, client) =>
 builder.Services.AddHttpClient<IGeocodingService, GeocodingService>((sp, client) =>
 {
     var opts = sp.GetRequiredService<IOptions<GeocodingOptions>>().Value;
-    client.BaseAddress = new Uri(opts.BaseUrl);
-});
-
-builder.Services.AddHttpClient<IReverseGeocodingService, BigDataCloudReverseGeocoder>((sp, client) =>
-{
-    var opts = sp.GetRequiredService<IOptions<ReverseGeocodingOptions>>().Value;
     client.BaseAddress = new Uri(opts.BaseUrl);
 });
 
@@ -202,32 +193,6 @@ app.MapGet("/geocode", async (
     var resultCount = Math.Clamp(count ?? 5, 1, 5);
     var results = await geocoding.SearchAsync(q, resultCount, cancellationToken);
     return Results.Ok(results);
-}).RequireRateLimiting("weather-per-ip");
-
-app.MapGet("/reverse", async (
-    double lat,
-    double lon,
-    IReverseGeocodingService reverseGeocoding,
-    CancellationToken cancellationToken) =>
-{
-    if (!double.IsFinite(lat) || lat < -90 || lat > 90)
-    {
-        return Results.Problem(
-            title: "Invalid query parameter",
-            detail: $"Invalid lat value: '{lat}'. Expected a number between -90 and 90.",
-            statusCode: 400);
-    }
-
-    if (!double.IsFinite(lon) || lon < -180 || lon > 180)
-    {
-        return Results.Problem(
-            title: "Invalid query parameter",
-            detail: $"Invalid lon value: '{lon}'. Expected a number between -180 and 180.",
-            statusCode: 400);
-    }
-
-    var place = await reverseGeocoding.ReverseAsync(lat, lon, cancellationToken);
-    return place is null ? Results.NotFound() : Results.Ok(place);
 }).RequireRateLimiting("weather-per-ip");
 
 app.Run();
