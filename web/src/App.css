@@ -7,7 +7,7 @@
   text-align: left;
 }
 
-/* Theme toggle (front face, upper-right corner) ------------------------- */
+/* Theme toggle (front face, bottom-left corner) ------------------------- */
 .theme-corner {
   position: absolute;
   bottom: 14px;
@@ -56,9 +56,15 @@
   margin-bottom: 32px;
 }
 
-/* Compact brand mark shown in result state in place of the full masthead. */
+/* Compact brand mark shown in result state in place of the full masthead.
+   Pulled left into the content padding so its left edge lines up with the
+   theme toggle below it (theme-corner is absolute at left:14px; content pad is
+   28px) — the left-rail mirror of .mode-controls' right-edge alignment to the
+   cog. */
 .wordmark-sm {
   text-align: left;
+  margin-left: -14px;
+  font-family: var(--brand);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -115,6 +121,7 @@
 
 .masthead h1 {
   margin: 0;
+  font-family: var(--brand);
   font-size: 48px;
   font-weight: 700;
   letter-spacing: 2px;
@@ -225,6 +232,42 @@ button.link {
 
 .status.hint {
   color: var(--text);
+}
+
+/* Transient failure toast (re-locate failed with a result already on screen).
+   Floats above the bottom corner controls; auto-dismissed from App. */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 56px);
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text-h);
+  font-size: 14px;
+  text-align: center;
+  animation: toast-in 0.2s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }
 
 /* Flip widget ----------------------------------------------------------- */
@@ -345,6 +388,7 @@ button.link {
 
 .about .wordmark {
   margin: 0;
+  font-family: var(--brand);
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
@@ -459,8 +503,18 @@ button.link {
   font-weight: 500;
 }
 
-.sources {
+/* Freshness line: when the displayed conditions were fetched. The lead line of
+   the footer — it carries more weight than the sources credit beneath it. */
+.updated {
   margin-top: 24px;
   font-size: 14px;
   color: var(--text);
+}
+
+/* Sources credit: quieter than the freshness line — it sits directly beneath. */
+.sources {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text);
+  opacity: 0.7;
 }

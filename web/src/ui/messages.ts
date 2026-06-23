@@ -38,3 +38,20 @@ export function locationNote(
   }
   return null;
 }
+
+// Concise copy for a transient toast when re-locating fails while a result is
+// already on screen. Unlike `locationNote` (which drives the launcher layout and
+// can be null on the happy path), this always resolves — it's only shown for a
+// real failure — and stays short enough for a toast.
+export function geolocationToast(kind: GeolocationErrorKind): string {
+  switch (kind) {
+    case "denied":
+      return "Location is blocked — check your browser's site settings.";
+    case "unsupported":
+      return "Location isn't available on this device.";
+    case "timeout":
+      return "Getting your location took too long.";
+    case "unavailable":
+      return "We couldn't determine your location.";
+  }
+}

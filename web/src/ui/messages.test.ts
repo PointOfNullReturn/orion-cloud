@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ErrorKind } from "../api/http";
-import { apiErrorMessage, locationNote } from "./messages";
+import type { GeolocationErrorKind } from "../location/geolocation";
+import { apiErrorMessage, geolocationToast, locationNote } from "./messages";
 
 describe("apiErrorMessage", () => {
   it("gives rate-limited its own distinct, gentle message", () => {
@@ -70,5 +71,32 @@ describe("locationNote", () => {
     for (const note of notes) {
       expect(note?.toLowerCase()).not.toContain("instead");
     }
+  });
+});
+
+describe("geolocationToast", () => {
+  const kinds: GeolocationErrorKind[] = [
+    "denied",
+    "unavailable",
+    "timeout",
+    "unsupported",
+  ];
+
+  it("gives every failure kind a non-empty, concise message", () => {
+    for (const kind of kinds) {
+      const msg = geolocationToast(kind);
+      expect(msg.length).toBeGreaterThan(0);
+      expect(msg).not.toContain(kind); // never leak the raw kind
+    }
+  });
+
+  it("points a blocked user toward settings", () => {
+    expect(geolocationToast("denied").toLowerCase()).toContain("settings");
+  });
+
+  it("distinguishes timeout from unavailable", () => {
+    expect(geolocationToast("timeout")).not.toEqual(
+      geolocationToast("unavailable"),
+    );
   });
 });

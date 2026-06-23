@@ -5,8 +5,13 @@ import { fetchReverse } from "./api/reverse";
 import { getCurrentPosition, type GeolocationErrorKind } from "./location/geolocation";
 import { parseCityQuery, prioritizeByHint } from "./location/cityQuery";
 import { decideLocationMode, type PermissionState } from "./location/locationUx";
-import { readGeolocationPermission } from "./location/permission";
-import { apiErrorMessage, locationNote } from "./ui/messages";
+import {
+  readGeolocationPermission,
+  watchGeolocationPermission,
+} from "./location/permission";
+import { apiErrorMessage, geolocationToast, locationNote } from "./ui/messages";
+import { loadUnits, saveUnits } from "./ui/units";
+import { loadLastLocation, saveLastLocation } from "./ui/lastLocation";
 import { WeatherCard } from "./ui/WeatherCard";
 import { ThemeToggle } from "./ui/ThemeToggle";
 import "./App.css";
@@ -48,6 +53,15 @@ function SearchIcon() {
 type Phase = "idle" | "busy" | "ready" | "error";
 type Source = "location" | "search";
 
+// How often to silently re-fetch the on-screen location's weather so a
+// long-open widget doesn't drift stale. Set ABOVE the API's CacheTtlSeconds
+// (300s) on purpose: each poll then lands after the prior cache entry has
+// expired, so it's always a cache miss returning fresh data and the `Updated`
+// line advances every time. ~15 min also tracks how often the upstream
+// providers refresh current conditions, so polling faster wouldn't surface
+// anything newer.
+const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+
 function placeLabel(r: GeocodeResult): string {
   // Use the country code, not the name — BigDataCloud returns verbose official
   // names ("United States of America (the)"); the code is clean and consistent
@@ -56,11 +70,20 @@ function placeLabel(r: GeocodeResult): string {
 }
 
 function App() {
-  const [units, setUnits] = useState<Units>("metric");
-  const [phase, setPhase] = useState<Phase>("idle");
+  // A previously chosen location (if any), read once at mount. When present we
+  // boot straight into the result view and re-fetch its weather, rather than
+  // dropping the user back at the launcher on every reload.
+  const [restored] = useState(() => loadLastLocation());
+
+  const [units, setUnits] = useState<Units>(() => loadUnits());
+  const [phase, setPhase] = useState<Phase>(restored ? "busy" : "idle");
   const [weather, setWeather] = useState<WeatherResponse | null>(null);
-  const [locationLabel, setLocationLabel] = useState<string | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [locationLabel, setLocationLabel] = useState<string | null>(
+    restored?.label ?? null,
+  );
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
+    restored ? { lat: restored.lat, lon: restored.lon } : null,
+  );
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
   const [query, setQuery] = useState("");
@@ -69,9 +92,12 @@ function App() {
   const [permission, setPermission] = useState<PermissionState>("unknown");
   const [lastFailure, setLastFailure] = useState<GeolocationErrorKind | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [source, setSource] = useState<Source | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [source, setSource] = useState<Source | null>(restored?.source ?? null);
+  const [hasLoaded, setHasLoaded] = useState(restored !== null);
   const [locating, setLocating] = useState(false);
+  // Transient feedback when a re-locate fails while a result is already on
+  // screen (the otherwise-silent path) — auto-dismissed below.
+  const [toast, setToast] = useState<string | null>(null);
 
   // Monotonic id for location requests. A slow reverse-geocode from "Use my
   // location" must not overwrite the label once a newer location supersedes it.
@@ -86,10 +112,37 @@ function App() {
     readGeolocationPermission().then((state) => {
       if (active) setPermission(state);
     });
+    // Live-recover: if the user flips the site permission while the widget is
+    // open, react without a reload. A grant/prompt also clears a stale failure
+    // that had forced search-only, so the launcher returns to location-first.
+    const stop = watchGeolocationPermission((state) => {
+      setPermission(state);
+      if (state !== "denied") setLastFailure(null);
+    });
     return () => {
       active = false;
+      stop();
     };
   }, []);
+
+  // Restore the saved location once on mount: re-fetch its weather so the user
+  // lands on current conditions, not the launcher. We deliberately read the
+  // mount-time `restored`/`units`, so this runs exactly once.
+  useEffect(() => {
+    if (restored) {
+      loadWeather(restored.lat, restored.lon, restored.label, units, false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-dismiss the failure toast. (Identical back-to-back messages won't
+  // re-arm the timer — same state value, no effect re-run — which is fine: a
+  // repeated failure just rides out the original window.)
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   const busy = phase === "busy";
   const supported = "geolocation" in navigator;
@@ -165,7 +218,13 @@ function App() {
         // the hero and `note` explains why. Hard failures (denied/unsupported)
         // drop to search-only; transient ones leave a "try again" affordance.
         setLastFailure(pos.kind);
-        if (!silent) setPhase("idle");
+        if (silent) {
+          // A result is already on screen, so there's no launcher note to read.
+          // Surface a transient toast so the tap isn't a silent no-op.
+          setToast(geolocationToast(pos.kind));
+        } else {
+          setPhase("idle");
+        }
       }
     } finally {
       setLocating(false);
@@ -199,10 +258,46 @@ function App() {
   function changeUnits(next: Units) {
     if (next === units) return;
     setUnits(next);
+    saveUnits(next);
     if (coords) {
       loadWeather(coords.lat, coords.lon, locationLabel, next, true);
     }
   }
+
+  // Auto-refresh. The refresh closure captures the current coords/units/label;
+  // we keep ONE interval for the component's life and call the latest closure
+  // through a ref (the "useInterval" pattern). That way each refresh doesn't
+  // re-arm the timer, yet every tick still sees fresh state.
+  const refresh = () => {
+    // Only refresh a result anchored to coordinates, and never while the tab is
+    // hidden — no point polling a background tab.
+    if (phase !== "ready" || !coords) return;
+    if (document.visibilityState === "hidden") return;
+    loadWeather(coords.lat, coords.lon, locationLabel, units, true);
+  };
+  const refreshRef = useRef(refresh);
+  useEffect(() => {
+    refreshRef.current = refresh;
+  });
+  useEffect(() => {
+    const id = setInterval(() => refreshRef.current(), REFRESH_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  // Persist the chosen location whenever a result is on screen, so the next
+  // reload can restore it. Saving from an effect (rather than inside
+  // loadWeather) captures the committed coords/label/source, never a stale
+  // render — and naturally re-saves when the user re-locates or searches anew.
+  useEffect(() => {
+    if (phase === "ready" && coords && source) {
+      saveLastLocation({
+        lat: coords.lat,
+        lon: coords.lon,
+        label: locationLabel,
+        source,
+      });
+    }
+  }, [phase, coords, locationLabel, source]);
 
   function selectMatch(m: GeocodeResult) {
     // Picking a city supersedes any in-flight reverse from "Use my location".
@@ -352,6 +447,12 @@ function App() {
 
             {phase === "ready" && weather && (
               <WeatherCard weather={weather} locationLabel={locationLabel} />
+            )}
+
+            {toast && (
+              <div className="toast" role="status">
+                {toast}
+              </div>
             )}
           </section>
 

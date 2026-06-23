@@ -1,4 +1,10 @@
 import type { Provider, WeatherResponse } from "../api/weather";
+import { formatUpdatedAt } from "./datetime";
+import { useNow } from "./useNow";
+
+// The relative label is minute-granular; re-render twice a minute so it never
+// lags reality by more than ~30s.
+const TICK_MS = 30_000;
 
 const PROVIDER_LABELS: Record<Provider, string> = {
   openmeteo: "Open-Meteo",
@@ -67,6 +73,8 @@ export function WeatherCard({
   const sources = weather.providers
     .map((p) => PROVIDER_LABELS[p] ?? p)
     .join(", ");
+  const now = useNow(TICK_MS);
+  const updated = formatUpdatedAt(weather.timestamp, now);
 
   return (
     <div className="weather">
@@ -87,6 +95,7 @@ export function WeatherCard({
         ))}
       </dl>
 
+      <p className="updated">{updated}</p>
       <p className="sources">
         {sources ? `Data Sources: ${sources}` : "No sources reported"}
       </p>
