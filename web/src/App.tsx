@@ -15,6 +15,7 @@ import { loadUnits, saveUnits } from "./ui/units";
 import { loadLastLocation, saveLastLocation } from "./ui/lastLocation";
 import { WeatherCard } from "./ui/WeatherCard";
 import { ThemeToggle } from "./ui/ThemeToggle";
+import { buildLabel } from "./ui/version";
 // OpenWeather's mandatory logo, in both variants. CSS swaps them by theme: the
 // dark-wordmark "master" on light backgrounds, the white "negative" on dark.
 import openWeatherLogoLight from "./assets/openweather-logo-light.png";
@@ -490,8 +491,8 @@ function App() {
               <p className="about-tagline">
                 Weather aggregated from multiple sources.
               </p>
-              {/* Placeholder — real version/build wired from the build later. */}
-              <p className="version">v1.0 · build local</p>
+              {/* Version + build commit, injected at build time (vite.config.ts). */}
+              <p className="version">{buildLabel(__APP_VERSION__, __BUILD_SHA__)}</p>
 
               <div className="about-credits">
                 <span className="credits-label">Data and attribution</span>
