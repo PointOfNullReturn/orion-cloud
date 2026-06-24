@@ -14,6 +14,10 @@ import { loadUnits, saveUnits } from "./ui/units";
 import { loadLastLocation, saveLastLocation } from "./ui/lastLocation";
 import { WeatherCard } from "./ui/WeatherCard";
 import { ThemeToggle } from "./ui/ThemeToggle";
+// OpenWeather's mandatory logo, in both variants. CSS swaps them by theme: the
+// dark-wordmark "master" on light backgrounds, the white "negative" on dark.
+import openWeatherLogoLight from "./assets/openweather-logo-light.png";
+import openWeatherLogoDark from "./assets/openweather-logo-dark.png";
 import "./App.css";
 
 function GearIcon() {
@@ -465,6 +469,52 @@ function App() {
               </p>
               {/* Placeholder — real version/build wired from the build later. */}
               <p className="version">v1.0 · build local</p>
+
+              <div className="about-credits">
+                <span className="credits-label">Data and attribution</span>
+                <ul className="attribution">
+                  <li>
+                    {/* Open-Meteo required credit (CC BY 4.0): exact text
+                        "Weather data by Open-Meteo.com" + link. One credit
+                        covers their weather and geocoding APIs (same org). */}
+                    Weather data by{" "}
+                    <a
+                      href="https://open-meteo.com/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open-Meteo.com
+                    </a>
+                    <span className="attribution-note"> · CC BY 4.0</span>
+                  </li>
+                  <li>
+                    {/* OpenWeather required credit (ODbL): exact text "Weather
+                        data provided by OpenWeather" + link + LOGO — all three
+                        mandatory. */}
+                    Weather data provided by{" "}
+                    <a
+                      href="https://openweathermap.org/"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      OpenWeather
+                    </a>
+                    <span className="attribution-note"> · ODbL</span>
+                    {/* OpenWeather's required logo. Both variants render; CSS
+                        shows the one that fits the active theme's background. */}
+                    <img
+                      className="attribution-logo logo-light"
+                      src={openWeatherLogoLight}
+                      alt="OpenWeather"
+                    />
+                    <img
+                      className="attribution-logo logo-dark"
+                      src={openWeatherLogoDark}
+                      alt="OpenWeather"
+                    />
+                  </li>
+                </ul>
+              </div>
             </header>
 
             <div className="setting">

@@ -410,6 +410,21 @@ button.link {
   color: var(--text);
 }
 
+/* Attribution lives inside the sunken about box, divided from the version line. */
+.about-credits {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.credits-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
 .setting {
   margin-bottom: 20px;
 }
@@ -452,6 +467,67 @@ button.link {
 .unit-desc {
   font-size: 13px;
   color: var(--text);
+}
+
+/* Data & attribution (card back) */
+.attribution {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.attribution a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.attribution a:hover {
+  text-decoration: underline;
+}
+
+.attribution-note {
+  opacity: 0.7;
+}
+
+/* OpenWeather logo (mandatory attribution). Sits below its credit line, sized to
+   sit quietly with the text credits. */
+.attribution-logo {
+  height: 40px;
+  width: auto;
+  margin-top: 8px;
+}
+
+/* Show the logo variant that suits the active theme's background. Mirrors the
+   dark-theme selectors in index.css: explicit dark, OR system/unset + OS dark. */
+.logo-light {
+  display: block;
+}
+.logo-dark {
+  display: none;
+}
+
+:root[data-theme='dark'] .logo-light {
+  display: none;
+}
+:root[data-theme='dark'] .logo-dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='system'] .logo-light,
+  :root:not([data-theme]) .logo-light {
+    display: none;
+  }
+  :root[data-theme='system'] .logo-dark,
+  :root:not([data-theme]) .logo-dark {
+    display: block;
+  }
 }
 
 .done {
