@@ -45,6 +45,16 @@ export function formatAbsolute(iso: string, opts: AbsoluteOptions = {}): string 
   }).format(new Date(iso));
 }
 
+// True when `iso` is at least `maxAgeMs` old relative to `now` — the cue to
+// refresh on tab-refocus instead of waiting out the interval. A future
+// (clock-skewed) or unparseable timestamp counts as fresh, so we never trigger a
+// spurious refresh on bad input; the regular interval still covers the live case.
+export function isStale(iso: string, now: Date, maxAgeMs: number): boolean {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return false;
+  return now.getTime() - then >= maxAgeMs;
+}
+
 // "Updated 4 min ago · Jun 20, 3:45 PM"
 export function formatUpdatedAt(
   iso: string,

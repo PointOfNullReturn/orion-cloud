@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatAbsolute, formatUpdatedAt, relativeTime } from "./datetime";
+import {
+  formatAbsolute,
+  formatUpdatedAt,
+  isStale,
+  relativeTime,
+} from "./datetime";
 
 // A fixed reference "now" so the relative wording is deterministic.
 const NOW = new Date("2026-06-20T15:45:00Z");
@@ -63,5 +68,30 @@ describe("formatUpdatedAt", () => {
     expect(
       formatUpdatedAt(ago(4 * 60), NOW, { locale: "en-US", timeZone: "UTC" }),
     ).toBe("Updated 4 min ago · Jun 20, 3:41 PM");
+  });
+});
+
+describe("isStale", () => {
+  const MAX = 15 * 60 * 1000; // 15 min, matching REFRESH_INTERVAL_MS
+
+  it("is stale when older than the threshold", () => {
+    expect(isStale(ago(20 * 60), NOW, MAX)).toBe(true);
+  });
+
+  it("is fresh when newer than the threshold", () => {
+    expect(isStale(ago(5 * 60), NOW, MAX)).toBe(false);
+  });
+
+  it("is stale exactly at the threshold (inclusive)", () => {
+    expect(isStale(ago(15 * 60), NOW, MAX)).toBe(true);
+  });
+
+  it("treats a future (clock-skewed) timestamp as fresh", () => {
+    const future = new Date(NOW.getTime() + 5 * 60 * 1000).toISOString();
+    expect(isStale(future, NOW, MAX)).toBe(false);
+  });
+
+  it("treats an unparseable timestamp as fresh (no spurious refresh)", () => {
+    expect(isStale("not-a-date", NOW, MAX)).toBe(false);
   });
 });

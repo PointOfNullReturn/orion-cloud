@@ -64,3 +64,7 @@ nunit-*.xml
 
 # VS Code
 .vscode/
+
+# Node (the web frontend has its own web/.gitignore, but this guards the repo
+# root against tools accidentally run from here instead of web/)
+node_modules/

@@ -10,6 +10,7 @@ import {
   watchGeolocationPermission,
 } from "./location/permission";
 import { apiErrorMessage, geolocationToast, locationNote } from "./ui/messages";
+import { isStale } from "./ui/datetime";
 import { loadUnits, saveUnits } from "./ui/units";
 import { loadLastLocation, saveLastLocation } from "./ui/lastLocation";
 import { WeatherCard } from "./ui/WeatherCard";
@@ -286,6 +287,28 @@ function App() {
   useEffect(() => {
     const id = setInterval(() => refreshRef.current(), REFRESH_INTERVAL_MS);
     return () => clearInterval(id);
+  }, []);
+
+  // Catch-up on tab-refocus. The interval above skips hidden tabs, so returning
+  // to a long-backgrounded widget would otherwise show stale conditions until
+  // the next tick. On becoming visible, refresh immediately — but only if the
+  // shown data has actually aged past the interval (a brief glance away does
+  // nothing). Same ref pattern as the interval so the listener mounts once.
+  const refocus = () => {
+    if (document.visibilityState !== "visible") return;
+    if (phase !== "ready" || !coords || !weather) return;
+    if (isStale(weather.timestamp, new Date(), REFRESH_INTERVAL_MS)) {
+      loadWeather(coords.lat, coords.lon, locationLabel, units, true);
+    }
+  };
+  const refocusRef = useRef(refocus);
+  useEffect(() => {
+    refocusRef.current = refocus;
+  });
+  useEffect(() => {
+    const handler = () => refocusRef.current();
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
   }, []);
 
   // Persist the chosen location whenever a result is on screen, so the next
