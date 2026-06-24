@@ -33,10 +33,11 @@ export function relativeTime(iso: string, now: Date): string {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-// "Jun 20, 3:45 PM" — short, no year (current conditions are ~today). Delegates
-// to Intl so the viewer sees their own locale + time zone.
+// "Jun 20, 2026, 3:45 PM" — short date + year + time. Delegates to Intl so the
+// viewer sees their own locale + time zone.
 export function formatAbsolute(iso: string, opts: AbsoluteOptions = {}): string {
   return new Intl.DateTimeFormat(opts.locale, {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -55,7 +56,7 @@ export function isStale(iso: string, now: Date, maxAgeMs: number): boolean {
   return now.getTime() - then >= maxAgeMs;
 }
 
-// "Updated 4 min ago · Jun 20, 3:45 PM"
+// "Updated 4 min ago · Jun 20, 2026, 3:45 PM"
 export function formatUpdatedAt(
   iso: string,
   now: Date,

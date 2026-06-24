@@ -43,13 +43,13 @@ describe("relativeTime", () => {
 });
 
 describe("formatAbsolute", () => {
-  it("renders a short, no-year date + time in the given locale/zone", () => {
+  it("renders a short date + time with year in the given locale/zone", () => {
     expect(
       formatAbsolute("2026-06-20T15:45:00Z", {
         locale: "en-US",
         timeZone: "UTC",
       }),
-    ).toBe("Jun 20, 3:45 PM");
+    ).toBe("Jun 20, 2026, 3:45 PM");
   });
 
   it("honors the supplied time zone", () => {
@@ -59,7 +59,7 @@ describe("formatAbsolute", () => {
         locale: "en-US",
         timeZone: "America/Los_Angeles",
       }),
-    ).toBe("Jun 20, 8:45 AM");
+    ).toBe("Jun 20, 2026, 8:45 AM");
   });
 });
 
@@ -67,7 +67,7 @@ describe("formatUpdatedAt", () => {
   it("composes the relative and absolute parts with a separator", () => {
     expect(
       formatUpdatedAt(ago(4 * 60), NOW, { locale: "en-US", timeZone: "UTC" }),
-    ).toBe("Updated 4 min ago · Jun 20, 3:41 PM");
+    ).toBe("Updated 4 min ago · Jun 20, 2026, 3:41 PM");
   });
 });
 
