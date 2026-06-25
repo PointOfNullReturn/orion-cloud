@@ -11,6 +11,11 @@ using Orion.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Drop the "Server: Kestrel" banner — Kestrel writes it after the middleware
+// pipeline, so the security-headers RemoveServerHeader() can't reach it; the
+// only reliable way to suppress it is at the Kestrel level.
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
@@ -115,7 +120,6 @@ var securityHeaders = new HeaderPolicyCollection()
     .AddStrictTransportSecurityMaxAgeIncludeSubDomains(maxAgeInSeconds: 60 * 60 * 24 * 365)
     .AddReferrerPolicyNoReferrer()
     .AddXssProtectionDisabled()
-    .RemoveServerHeader()
     .AddContentSecurityPolicy(csp =>
     {
         csp.AddDefaultSrc().None();

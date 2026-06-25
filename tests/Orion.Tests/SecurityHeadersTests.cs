@@ -3,9 +3,14 @@ using Orion.Tests.Helpers;
 namespace Orion.Tests;
 
 // Asserts the always-on security headers on a representative response (/health).
-// HSTS is intentionally NOT covered here: NetEscapades only emits
-// Strict-Transport-Security over HTTPS, and TestServer runs HTTP — that one is
-// verified against the live endpoint instead.
+//
+// Two headers are intentionally NOT covered here because TestServer can't
+// reproduce them — both are verified against real Kestrel / the live endpoint:
+//   - HSTS: NetEscapades only emits Strict-Transport-Security over HTTPS;
+//     TestServer runs HTTP.
+//   - Absence of "Server": TestServer is not Kestrel and never adds a Server
+//     header, so asserting its absence here would pass vacuously even if the
+//     Kestrel AddServerHeader=false suppression regressed.
 public class SecurityHeadersTests : IClassFixture<OrionWebAppFactory>
 {
     private readonly OrionWebAppFactory _factory;
