@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
+using NetEscapades.AspNetCore.SecurityHeaders;
 using Orion.Api.Configuration;
 using Orion.Api.Models;
 using Orion.Api.Services;
@@ -105,6 +106,23 @@ builder.Services.AddScoped<IWeatherAggregatorService, WeatherAggregatorService>(
 
 var app = builder.Build();
 
+// First in the pipeline so every response — including errors, 429s, and CORS
+// preflights — carries the headers. CSP is locked all the way down because this
+// is a JSON API that serves no markup; HSTS only emits over HTTPS.
+var securityHeaders = new HeaderPolicyCollection()
+    .AddFrameOptionsDeny()
+    .AddContentTypeOptionsNoSniff()
+    .AddStrictTransportSecurityMaxAgeIncludeSubDomains(maxAgeInSeconds: 60 * 60 * 24 * 365)
+    .AddReferrerPolicyNoReferrer()
+    .AddXssProtectionDisabled()
+    .RemoveServerHeader()
+    .AddContentSecurityPolicy(csp =>
+    {
+        csp.AddDefaultSrc().None();
+        csp.AddFrameAncestors().None();
+    });
+
+app.UseSecurityHeaders(securityHeaders);
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
