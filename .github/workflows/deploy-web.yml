@@ -1,0 +1,56 @@
+name: deploy-web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch:
+
+# D3: the public Container App URL, baked into the bundle at build time by Vite.
+# Not a secret (it's the same URL the browser hits); a plain env var keeps the
+# config visible in the workflow.
+env:
+  VITE_API_URL: https://orion-api.ashyisland-609827a5.westus2.azurecontainerapps.io
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate the deploy on a green suite, mirroring the backend deploy.yml.
+      - name: Test
+        run: npx vitest run
+
+      - name: Build (tsc -b + vite build)
+        run: npm run build
+
+      # We build ourselves above (pinned Node, npm ci, VITE_API_URL injected),
+      # so the action only uploads the pre-built dist — no Oryx build.
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: web/dist
+          output_location: ''
+          skip_app_build: true
+          skip_api_build: true
