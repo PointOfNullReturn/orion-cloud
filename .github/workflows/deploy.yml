@@ -5,10 +5,10 @@ on:
     branches: [main]
     # The frontend lives in web/ and ships via deploy-web.yml. A push that only
     # touches web/ has no backend impact, so skip the build/image/deploy here.
-    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml', '.github/workflows/web-ci.yml']
+    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml', '.github/workflows/build-web.yml']
   pull_request:
     branches: [main]
-    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml', '.github/workflows/web-ci.yml']
+    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml', '.github/workflows/build-web.yml']
   workflow_dispatch:
 
 permissions:
