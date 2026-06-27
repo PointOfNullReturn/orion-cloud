@@ -1,24 +1,32 @@
-name: deploy
+name: deploy-api
+
+# Build, test, and deploy the Orion API (.NET) to Azure Container Apps.
+#
+#   build-and-test : runs on every push to main AND every pull request — the CI gate.
+#   deploy         : runs only on push to main (skipped on PRs), and only after
+#                    build-and-test passes (needs:). Builds the container image,
+#                    pushes it to ACR, and rolls the Container App to it.
+#
+# Triggers ignore web/ (+ the frontend workflow), so a frontend-only change never
+# runs this workflow. The whole "ship the API" story lives in this one file.
 
 on:
   push:
     branches: [main]
-    # The frontend lives in web/ and ships via deploy-web.yml. A push that only
-    # touches web/ has no backend impact, so skip the build/image/deploy here.
-    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml', '.github/workflows/build-web.yml']
+    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml']
   pull_request:
     branches: [main]
-    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml', '.github/workflows/build-web.yml']
+    paths-ignore: ['web/**', '.github/workflows/deploy-web.yml']
   workflow_dispatch:
 
 permissions:
-  id-token: write
+  id-token: write # federated OIDC login to Azure (no stored client secret)
   contents: read
 
 jobs:
   build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -31,17 +39,17 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore Orion.slnx
 
-      - name: Build
+      - name: Build (Release)
         run: dotnet build Orion.slnx --configuration Release --no-restore
 
       - name: Test
         run: dotnet test Orion.slnx --configuration Release --no-build --verbosity normal
 
   deploy:
+    name: Deploy to Azure Container Apps
     needs: build-and-test
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' # gate: deploy only on push to main, never on PRs
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -56,13 +64,13 @@ jobs:
       - name: Log in to ACR
         run: az acr login --name ${{ secrets.AZURE_ACR_LOGIN_SERVER }}
 
-      - name: Build and push image
+      - name: Build and push the container image
         run: |
           IMAGE="${{ secrets.AZURE_ACR_LOGIN_SERVER }}/${{ secrets.AZURE_ACR_REPOSITORY }}:${{ github.sha }}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
-      - name: Update Container App
+      - name: Roll the Container App to the new image
         run: |
           az containerapp update \
             --name ${{ secrets.AZURE_CONTAINER_APP_NAME }} \

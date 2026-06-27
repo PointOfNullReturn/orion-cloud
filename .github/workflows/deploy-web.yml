@@ -1,16 +1,29 @@
 name: deploy-web
 
+# Build, test, and deploy the Orion web frontend (Vite SPA) to Azure Static Web Apps.
+#
+#   build-and-test : runs on every push to main AND every pull request — the CI gate.
+#   deploy         : runs only on push to main (skipped on PRs), and only after
+#                    build-and-test passes (needs:). Builds the bundle and uploads it.
+#
+# Triggers are path-scoped to web/ (+ this file), so a backend-only change never
+# runs this workflow. The whole "ship the frontend" story lives in this one file.
+
 on:
   push:
     branches: [main]
     paths:
       - 'web/**'
       - '.github/workflows/deploy-web.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
-# D3: the public Container App URL, baked into the bundle at build time by Vite.
-# Not a secret (it's the same URL the browser hits); a plain env var keeps the
-# config visible in the workflow.
+# The public Container App URL, baked into the bundle at build time by Vite.
+# Not a secret (it's the same URL the browser calls); kept here so the config is visible.
 env:
   VITE_API_URL: https://orion-api.ashyisland-609827a5.westus2.azurecontainerapps.io
 
@@ -19,9 +32,9 @@ defaults:
     working-directory: web
 
 jobs:
-  build-and-deploy:
+  build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out the repo
         uses: actions/checkout@v7
@@ -33,19 +46,40 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Install dependencies
+      - name: Install dependencies (clean, from lockfile)
         run: npm ci
 
-      # Gate the deploy on a green suite, mirroring the backend deploy.yml.
-      - name: Test
+      - name: Run unit tests
         run: npx vitest run
 
       - name: Build (tsc -b + vite build)
         run: npm run build
 
-      # We build ourselves above (pinned Node, npm ci, VITE_API_URL injected),
-      # so the action only uploads the pre-built dist — no Oryx build.
-      - name: Deploy to Azure Static Web Apps
+  deploy:
+    name: Deploy to Azure Static Web Apps
+    needs: build-and-test
+    if: github.event_name != 'pull_request' # gate: deploy only on push to main, never on PRs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies (clean, from lockfile)
+        run: npm ci
+
+      - name: Build (tsc -b + vite build)
+        run: npm run build
+
+      # We built the bundle above (pinned Node, npm ci, VITE_API_URL injected), so the
+      # action just uploads the pre-built dist — skip_app_build avoids a second Oryx build.
+      - name: Upload dist to Azure Static Web Apps
         uses: Azure/static-web-apps-deploy@v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
