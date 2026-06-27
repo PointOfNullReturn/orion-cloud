@@ -24,6 +24,10 @@ Dockerfile
 # Tests aren't copied into the image; excluding them speeds up the build context upload
 tests/
 
+# Frontend ships via deploy-web.yml -> Static Web App, never into the API image.
+# Excluding it keeps the build context small (esp. a local web/node_modules).
+web/
+
 # Local docs and notes
 README.md
 LICENSE
