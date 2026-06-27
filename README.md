@@ -8,13 +8,32 @@ search. Reverse geocoding (turning your current location into a place name) runs
 client-side in the browser via BigDataCloud's free client-side API, per its
 fair-use terms.
 
-> **Status:** work in progress. Live URL and full API reference coming soon.
+## Architecture & design choices
 
-## Tech stack
+Orion is two independent deployables — a .NET API and a React single-page app —
+so each ships on its own pipeline.
 
-- **API:** ASP.NET Core minimal API (.NET 10)
-- **Front end:** React + Vite + TypeScript
-- **Hosting:** Azure Container Apps (API); Azure Static Web Apps (UI, planned)
+**Flow:** the browser gets a location (geolocation button or city search), the
+SPA calls the API, and the API fans out to the weather providers, merges their
+answers, and returns one response. Reverse geocoding (coordinates → place name)
+runs in the browser to satisfy BigDataCloud's client-side fair-use terms.
+
+- **API — ASP.NET Core minimal API on .NET 10.** Minimal API keeps the surface
+  small and fast with little ceremony; .NET 10 for the current runtime. Weather
+  providers sit behind an `IWeatherProvider` interface (Open-Meteo, keyless;
+  OpenWeather, keyed) and merge **best-effort** — if one provider is down, the
+  response still returns with whatever answered. `HybridCache` gives cache-stampede
+  protection, and the API is hardened with per-IP rate limiting, input validation,
+  CORS, and a full set of security headers.
+- **Front end — React + Vite + TypeScript.** React for the component model, Vite
+  for a fast dev loop and a lean production build, and TypeScript to type the API
+  contract end to end. The UI is a frosted-glass flip-card widget with light/dark
+  themes, unit + theme persistence, and silent auto-refresh.
+- **Testing — TDD throughout.** xUnit for the API, Vitest for the front end.
+- **Hosting — Azure, scale-to-cost.** Container Apps runs the API with
+  scale-to-zero (no traffic, no cost); Static Web Apps serves the SPA on a global
+  CDN with free SSL. Secrets live in Key Vault; CI/CD is OIDC-based with no stored
+  cloud credentials. See [Deployment](#deployment).
 
 ## Repository layout
 
@@ -42,6 +61,13 @@ nullable, so clients must never assume an optional field is present.
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org/) (for the front end)
+
+### Get the code
+
+```bash
+git clone https://github.com/PointOfNullReturn/orion-cloud.git
+cd orion-cloud
+```
 
 ### 1. The API
 
@@ -96,6 +122,61 @@ first so requests have something to hit.
 dotnet test          # API (xUnit)
 cd web && npm test   # front end (Vitest)
 ```
+
+## Deployment
+
+Orion is host-agnostic: the API is a container and the front end is a static
+build, so it runs on any container host plus any static/CDN host. Azure is simply
+the reference deployment — this is not an Azure-only project.
+
+### Self-hosting (any platform)
+
+**API** — build the image and run it, passing config via environment variables:
+
+```bash
+docker build -t orion-api .
+docker run -p 8080:8080 \
+  -e Weather__OpenWeather__ApiKey="<your-openweather-key>" \
+  -e Cors__AllowedOrigins__0="https://your-frontend.example" \
+  orion-api
+```
+
+The container listens on port 8080. The OpenWeather key is optional (without it
+the aggregator runs Open-Meteo only); set the CORS origin to wherever the front
+end is served so the browser is allowed to call the API.
+
+**Front end** — build the static bundle and serve `web/dist/` from any static
+host or CDN:
+
+```bash
+cd web
+VITE_API_URL="https://your-api.example" npm ci && npm run build
+# then deploy the contents of web/dist/
+```
+
+`VITE_API_URL` is baked into the bundle at build time, so it must point at your
+API *before* you build.
+
+### Configuration reference
+
+| Setting                        | Applies to                 | Purpose                                                                  |
+| ------------------------------ | -------------------------- | ------------------------------------------------------------------------ |
+| `Weather__OpenWeather__ApiKey` | API (env / secret)         | Enables the OpenWeather source (optional — Open-Meteo works without it)   |
+| `Cors__AllowedOrigins__0`      | API (env)                  | Allows your front-end origin to call the API                             |
+| `VITE_API_URL`                 | Front end (build-time env) | Points the UI at your API                                                |
+
+### Reference deployment (Azure)
+
+The live instance runs on **Azure Static Web Apps** (front end) and **Azure
+Container Apps** (API, scale-to-zero), with images in **Azure Container Registry**
+and the OpenWeather key in **Azure Key Vault**. CI/CD is two GitHub Actions
+workflows — one per deployable — that build, test, and deploy on push to `main`
+via federated OIDC (no stored cloud credentials):
+
+- [`.github/workflows/deploy-api.yml`](.github/workflows/deploy-api.yml) — build & test the API, push the image, roll the Container App
+- [`.github/workflows/deploy-web.yml`](.github/workflows/deploy-web.yml) — build & test the front end, deploy to Static Web Apps
+
+Those workflows are the authoritative, runnable deployment steps — no separate runbook to drift out of date.
 
 ## License
 
